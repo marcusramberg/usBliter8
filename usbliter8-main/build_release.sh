@@ -7,6 +7,7 @@ BOARDS=(
     waveshare_rp2350_zero
     pimoroni_tiny2350
     pico2
+    adafruit_feather_rp2350
     # adafruit_feather_rp2040
     # pico
 )

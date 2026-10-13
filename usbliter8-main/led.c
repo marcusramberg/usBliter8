@@ -5,6 +5,7 @@
 #if LED_NEOPIXEL
 
 #include "pico/status_led.h"
+#include "pico/version.h"
 
 #if LED_RED_GREEN_SWAPPED
 #define NEOPIXEL_RGB(r, g, b) \
@@ -21,10 +22,19 @@
 #define AMBER       NEOPIXEL_RGB(18, 2, 0)
 #define RED         NEOPIXEL_RGB(24, 0, 0)
 
+#if PICO_SDK_VERSION_MAJOR == 2 && PICO_SDK_VERSION_MINOR < 3
 extern void set_ws2812(uint32_t value);
+#endif
 
 void led_switch_color(uint32_t color) {
+#if PICO_SDK_VERSION_MAJOR == 2 && PICO_SDK_VERSION_MINOR < 3
     set_ws2812(color);
+#else
+    // SDK 2.3 made set_ws2812 private. Its public API accepts RGB,
+    // while our existing color constants use the raw NeoPixel order.
+    uint32_t rgb = (color & 0xFF) | ((color & 0xFF00) << 8) | ((color & 0xFF0000) >> 8);
+    colored_status_led_set_on_with_color(rgb);
+#endif
 }
 
 void led_init(void) {

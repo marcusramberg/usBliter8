@@ -27,6 +27,19 @@ Here is a list of the boards we tested the exploit on:
 
 RP2040 can be theoretically used as well, but this is currently **NOT** very stable and Apple A13 SoC does **NOT** work at all.
 
+### Adafruit Feather RP2350 HSTX
+
+A board configuration is also available for the Feather RP2350 HSTX (not yet hardware-tested). Select `adafruit_feather_rp2350`, the board name used by Pico SDK. It uses the onboard NeoPixel on GPIO21 for RGB status and the following header pins for an external USB host connection:
+
+| USB signal | Feather pin |
+| --- | --- |
+| D+ | D24 / GPIO24 |
+| D- | D25 / GPIO25 |
+| GND | GND |
+| VBUS (5V) | USB, when the Feather is powered through USB-C |
+
+These pin assignments follow the [Adafruit pinout](https://learn.adafruit.com/adafruit-feather-rp2350/pinouts). The firmware uses PIO USB on D24/D25; the USB-C connector remains the power and serial-log connection to your computer. GPIO12/13 are on the HSTX connector, and the header labels D12/D13 are different GPIOs. Use a short Lightning-to-USB-A cable with a wired USB-A host socket or the soldered connection described above. Battery power alone does not provide 5V on the USB pin.
+
 ### Flashing firmware
 
 Compiled **UF2** images for the boards mentioned above are available in Releases section. They can be flashed either via mass storage protocol of RP2350 bootrom or via [picotool](https://github.com/raspberrypi/picotool).
@@ -97,6 +110,28 @@ options:
 
 ## Building
 
+### Building and flashing with Nix
+
+Run `nix-shell` in this repository to get CMake, Ninja, the ARM compiler, Pico SDK (including TinyUSB), and picotool. The shell sets `PICO_SDK_PATH` and `PICO_TOOLCHAIN_PATH` automatically. Package versions follow your `<nixpkgs>`; they may differ from the versions used upstream below, so verify reliability on hardware.
+
+For the Feather RP2350 HSTX:
+
+```sh
+nix-shell
+cmake -S . -B build-feather -G Ninja -DPICO_BOARD=adafruit_feather_rp2350
+cmake --build build-feather
+```
+
+Hold BOOT, press and release RESET, then release BOOT to enter BOOTSEL. Load, verify, and start the firmware with:
+
+```sh
+picotool load -v -x build-feather/usbliter8.uf2 --ser 34D5F438D75D1D63
+```
+
+Replace the serial number with your own board's serial if needed. If USB permissions prevent access, run picotool with `sudo` using its full path (`sudo "$(command -v picotool)" load -v -x build-feather/usbliter8.uf2 --ser 34D5F438D75D1D63`). Alternatively, copy the UF2 onto the BOOTSEL mass-storage drive. Firmware already running Pico SDK USB stdio can also be flashed with picotool's `-f` option.
+
+### Building with installed tools
+
 If you want to compile the firmware yourself, you need to get CMake, [Pico SDK](https://github.com/raspberrypi/pico-sdk), [picotool](https://github.com/raspberrypi/picotool) (depends on `libusb`) and [ARM toolchain](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads).
 
 Due to the racy nature of the exploit, code changes (even seemingly unrelated) might decrease reliability. We believe this is due to RP2350 executing code from external QSPI flash. The actual instructions can go to a little cache, and then evictions from that cache break timings and then the entire thing breaks.
@@ -118,13 +153,14 @@ Change `$PICO_SDK_PATH` and `$PICO_TOOLCHAIN_PATH` to your paths. `$PICO_BOARD` 
 * waveshare_rp2350_zero
 * pimoroni_tiny2350
 * pico2
+* adafruit_feather_rp2350
 
 Even though usage of RP2040 is discouraged, you can still try:
 
 * adafruit_feather_rp2040
 * pico
 
-You can also add your own board definition file to `/board` catalog. The board name must match board name in Pico SDK.
+You can also add your own board definition file to `/boards` catalog. The board name must match board name in Pico SDK.
 
 Or use the "unknown" one (picked by default for not supported boards). It uses GPIO12/13 for USB data signals and disables LED.
 
